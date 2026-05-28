@@ -1,8 +1,10 @@
 package com.sparta.paymentsystem.domain.cart.service;
 
-import com.sparta.paymentsystem.domain.cart.entity.CartItem;
 import com.sparta.paymentsystem.domain.cart.dto.CartItemResponse;
+import com.sparta.paymentsystem.domain.cart.entity.CartItem;
 import com.sparta.paymentsystem.domain.cart.repository.CartItemRepository;
+import com.sparta.paymentsystem.global.error.BusinessException;
+import com.sparta.paymentsystem.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,9 +29,11 @@ public class CartService {
         Optional<CartItem> existing = cartItemRepository.findByMember_IdAndProduct_Id(
                 cartItem.getMemberId(), cartItem.getProductId()
         );
+
         if (existing.isPresent()) {
             CartItem found = existing.get();
             found.addQuantity(cartItem.getQuantity());
+
             return found.getId();
         } else {
             return cartItemRepository.save(cartItem).getId();
@@ -40,15 +44,17 @@ public class CartService {
     public void updateQuantity(Long memberId, Long itemId, int quantity) {
         CartItem item = cartItemRepository.findById(itemId)
                 .filter(ci -> ci.getMemberId().equals(memberId))
-                .orElseThrow(() -> new RuntimeException("장바구니 항목을 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND));
+
         item.changeQuantity(quantity);
     }
 
     @Transactional
     public void removeItem(Long memberId, Long itemId) {
         int deleted = cartItemRepository.deleteByIdAndMember_Id(itemId, memberId);
+
         if (deleted == 0) {
-            throw new RuntimeException("장바구니 항목을 찾을 수 없습니다.");
+            throw new BusinessException(ErrorCode.CART_ITEM_NOT_FOUND);
         }
     }
 
